@@ -1,7 +1,6 @@
 ﻿namespace RDFTypeProvider
 
-
-open RDFConnection
+open RDFConnection.Connector
 open RDFDataStructure
 open System
 open System.Reflection
@@ -11,7 +10,8 @@ open Samples.FSharp.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.FSharp.Quotations
 open System.Text.RegularExpressions
-
+open VDS.RDF.Query
+open VDS.RDF.Parsing
 
 
 
@@ -27,19 +27,19 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
 
     let createTypes(sourceUri, rootTypeName, numOfIndividuals) = 
         
-        let connector = new Connector(sourceUri)
+        let endpoint = new SparqlRemoteEndpoint(new Uri(sourceUri))
         
         let serviceTypesClass = ProvidedTypeDefinition("ServiceTypes",baseType=Some typeof<obj>,HideObjectMethods=false)
        
         let getRdfTypes =
             // FIRST : get explicit types
-            let rdfTypesExplicit = connector.getExplicitTypes
+            let rdfTypesExplicit = getExplicitTypes endpoint
         
             // SECOND: now we extend types from domains
-            let explicitRDFProperties = connector.getExplicitProperties
-            let explicitRDFObjectProperties = connector.getExplicitObjectProperties
+            let explicitRDFProperties = getExplicitProperties endpoint
+            let explicitRDFObjectProperties = getExplicitObjectProperties endpoint
 
-            let rdfTypesOfDomain =  List.concat [ for property in explicitRDFProperties ->  connector.getDomainTypes(property) ]
+            let rdfTypesOfDomain =  List.concat [ for property in explicitRDFProperties ->  getDomainTypes(endpoint, property) ]
 
             // Combine types:  Explicit, Domain (and also Range types)
             rdfTypesExplicit  @ rdfTypesOfDomain |> Seq.distinctBy id
@@ -61,7 +61,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                             let t = ProvidedTypeDefinition(name, baseType=Some typeof<obj>,HideObjectMethods=true)
                             t.HideObjectMethods <- true
                             t.AddMembersDelayed(fun () -> 
-                            [ for ind in connector.getRangeTypes name |> Seq.truncate numOfIndividuals |> Seq.distinctBy id  do 
+                            [ for ind in getRangeTypes(endpoint, name) |> Seq.truncate numOfIndividuals |> Seq.distinctBy id  do 
                                 let p = ProvidedProperty(ind, typeof<string>,
                                                         GetterCode = (fun args -> <@@(%%(args.[0]):obj) :?> string  @@>))
                                 yield p
@@ -77,7 +77,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                         | false,_ -> 
                             let t = ProvidedTypeDefinition(propName, baseType=Some typeof<obj>,HideObjectMethods=true)
                             t.HideObjectMethods <- true
-                            t.AddMembersDelayed(fun () -> [ for rangeTy in connector.getRangeTypesOfClass (domainClass, propName)  do 
+                            t.AddMembersDelayed(fun () -> [ for rangeTy in getRangeTypesOfClass (endpoint, domainClass, propName)  do 
                                                                     let p = findOrCreateClassType(rangeTy)
                                                                     yield p ])
                             dictObjectPropTypes.Add(key, t)
@@ -99,13 +99,8 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
   
           
         let makeMembersForRDFType (rdfTypeInGraph: string) =
-                    [ for propertyName in connector.getPropertiesOfRDFClass rdfTypeInGraph do
+                    [ for propertyName in getPropertiesOfRDFClass(endpoint, rdfTypeInGraph) do
                             if not (String.IsNullOrEmpty propertyName) then 
-                                // XXX not implemented yet: "staticPropertyType" and "runtimePropertyType"
-                                // let staticPropertyType = property.FSharpPropertyType(fbSchema, refinedFSharpTypeOfFreebaseProperty, tryFindRefinedTypeForFreebaseType, makeDesignTimeNullableTy, makeDesignTimeSeqTy)
-                                // let runtimePropertyType = property.FSharpPropertyRuntimeType(fbSchema, fbRuntimeInfo.FreebaseObjectType)
-                                // now trying with type
-                                //let p = findOrCreateProvidedProp(propertyName)
                                 let p = findOrCreateObjectPropType(rdfTypeInGraph, propertyName)
                                 yield (p :> MemberInfo) 
                            ]
@@ -148,7 +143,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                     if numOfIndividuals > 0 then 
                         let t = ProvidedTypeDefinition(rdfTypeInGraph + "Individuals",  Some typeof<seq<string>>, HideObjectMethods=true)
                         t.AddMembersDelayed(fun () -> 
-                            [ for ind in connector.getIndividuals rdfTypeInGraph |> Seq.truncate numOfIndividuals |> Seq.distinctBy id  do 
+                            [ for ind in getIndividuals(endpoint, rdfTypeInGraph) |> Seq.truncate numOfIndividuals |> Seq.distinctBy id  do 
                                 let p = ProvidedProperty(ind, typeof<string>, IsStatic = true,
                                                         GetterCode = (fun args -> <@@(%%(args.[0]):obj) :?> string  @@>))
                                 yield p
@@ -164,20 +159,11 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
             theNestedTypesForTheDataTypesClassForDomain |> Seq.toArray
 
 
-        do serviceTypesClass.AddMembers(
-            
-                let makeTypeForGraphTypes(graphName:string) = 
-                    let theDataTypesClassForGraph = ProvidedTypeDefinition(graphName, Some typeof<obj>,HideObjectMethods=false)
-                    theDataTypesClassForGraph.AddMembersDelayed(fun () -> insertRDFTypesForOneGraph (theDataTypesClassForGraph,graphName) |> Array.toList) 
-                    //theDataTypesClassForGraph.AddMembers(insertRDFTypesForOneGraph (theDataTypesClassForGraph, graphName) |> Array.toList)
-                    theDataTypesClassForGraph
-
-                [ for graph in connector.getGraphs do 
-                    yield makeTypeForGraphTypes (graph) ] )
-              
-        //let serviceType = ProvidedTypeDefinition("RDFService",baseType=Some typeof<obj>, HideObjectMethods=true)
-        //do serviceType.AddXmlDoc "Represents the information available in the RDF data source."
-        //serviceTypesClass.AddMember serviceType 
+        do serviceTypesClass.AddMember(
+            let graphType = ProvidedTypeDefinition(sourceUri, Some typeof<obj>,HideObjectMethods=false)
+            graphType.AddMembersDelayed(fun () -> insertRDFTypesForOneGraph (graphType, sourceUri) |> Array.toList) 
+                //theDataTypesClassForGraph.AddMembers(insertRDFTypesForOneGraph (theDataTypesClassForGraph, graphName) |> Array.toList)
+            graphType)
             
         let theRootType = ProvidedTypeDefinition(asm, ns, "RDFData", baseType=Some typeof<obj>, HideObjectMethods=false)
         theRootType.AddMember  serviceTypesClass 
