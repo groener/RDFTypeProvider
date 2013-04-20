@@ -1,5 +1,4 @@
-﻿module RDFConnection 
-
+﻿namespace Samples.RdfTypeProvider
 
 open System
 open System.Collections.Generic
@@ -8,17 +7,6 @@ open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.FSharp.Quotations
 open VDS.RDF.Query
 open VDS.RDF.Parsing
-
-
-// get types from domain and range of properties
-// helper flatten the list
-let rec concatList l =
-    match l with
-    | head :: tail -> head @ (concatList tail)
-    | [] -> []
-    
-
-
 
 
 [<AutoOpen>]
@@ -43,30 +31,31 @@ type Connector(uri : string) =
 //  get explicit types: use "rdf:type"
      // this function is tested and works
     member this.getExplicitTypes()  =
-        let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?t WHERE { ?_s rdf:type ?t } LIMIT 80")
+        let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?t WHERE { ?_s rdf:type ?t } LIMIT 80 ")
         [for result in results ->  (getValueOfResult(result.ToString()))]
      
-    // get all properties of a RDFClass (not instance) -- argument it the class name
-    // e.g. SELECT DISTINCT ?property WHERE { <http://dbpedia.org/ontology/Person>  ?property  ?_x } LIMIT 100
-          // this function is tested and works
-    member this.getPropertiesOfRDFClass(className : string) =
-        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; className ;"> ?property ?_x } LIMIT 100"])
-        let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
-    
    
      // select only properties with resources in the range (no literals!)
     member this.getPropertiesOfRDFClassWithResourceRange(className : string) =
-        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; className ;"> ?property ?_x . FILTER (!isLiteral(?_x)) } LIMIT 100"])
+        let query = String.Concat(["SELECT DISTINCT ?property ?c WHERE { <" ; className ;"> ?property ?c . FILTER (!isLiteral(?c)) } LIMIT 100"])        
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
-
+        results.Results |> Seq.map(fun result -> (result.[0].ToString(),Some(result.[1].ToString()))) |> Seq.toList
+        
     // select onyl properties with literals in the range
     member this.getPropertiesOfRDFClassWithLiteralRange(className : string) =
         let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; className ;"> ?property ?_x . FILTER (isLiteral(?_x))  } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        [for result in results -> (getValueOfResult(result.ToString()),None)]
    
+    // get all properties of a RDFClass (not instance) -- argument it the class name
+    // e.g. SELECT DISTINCT ?property WHERE { <http://dbpedia.org/ontology/Person>  ?property  ?_x } LIMIT 100
+          // this function is tested and works
+    member this.getPropertiesOfRDFClass(className : string) =                
+        this.getPropertiesOfRDFClassWithResourceRange className @ this.getPropertiesOfRDFClassWithLiteralRange className
+        
+    
+   
+
    
     // extend the previous function get the range classes -- argument is the class and the property
       // e.g. SELECT DISTINCT ?t WHERE { rdfs:label rdfs:range  ?t } LIMIT 100
@@ -144,14 +133,30 @@ type Connector(uri : string) =
         [for result in results -> (getValueOfResult(result.ToString()))]
         
 
-
-    member this.getClassOfIndividual(individual: string) =
+    // Working with individuals
+    // for an individual get all its classes 
+    member this.getClassesOfIndividual(individual: string) =
         let query = String.Concat(["SELECT DISTINCT ?cls WHERE { <" ; individual ;"> rdf:type ?cls } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
         [for result in results -> (getValueOfResult(result.ToString()))]
 
+    // get properties where the range is an individual of a resource type 
+      // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
+    member this.getPropertiesOfIndWithResourceRange(individual: string) =
+        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?_resource . FILTER (!isLiteral(?_resource)) } LIMIT 100" ])
+        let results = endpoint.QueryWithResultSet(query)
+        [for result in results -> (getValueOfResult(result.ToString()))]
 
+    // get properties where the range is a literal 
+      // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
+    member this.getPropertiesOfIndWithLiteralRange(individual: string) =
+        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?_resource . FILTER (isLiteral(?_resource)) } LIMIT 100" ])
+        let results = endpoint.QueryWithResultSet(query)
+        [for result in results -> (getValueOfResult(result.ToString()))]
 
+        
+
+    // not used at the moment
 
     member this.getSuperClass(className : string) =
         let query = String.Concat(["SELECT DISTINCT ?cls WHERE { <" ; className ; "> rdfs:subClassOf ?cls } LIMIT 100"])
