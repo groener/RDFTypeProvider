@@ -143,17 +143,17 @@ type Connector(uri : string) =
     // get properties where the range is an individual of a resource type 
       // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
     member this.getPropertiesOfIndWithResourceRange(individual: string) =
-        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?_resource . FILTER (!isLiteral(?_resource)) } LIMIT 100" ])
+        let query = String.Concat(["SELECT DISTINCT ?property ?resource WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?resource . FILTER (!isLiteral(?resource)) } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString(),result.[1].ToString())) |> Seq.toList   
 
     // get properties where the range is a literal 
       // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
     member this.getPropertiesOfIndWithLiteralRange(individual: string) =
-        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?_resource . FILTER (isLiteral(?_resource)) } LIMIT 100" ])
+        let query = String.Concat(["SELECT DISTINCT ?property ?resource WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?resource . FILTER (isLiteral(?resource)) } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
-
+        results.Results |> Seq.map(fun result -> (result.[0].ToString(),result.[1].ToString())) |> Seq.toList
+        
         
 
     // not used at the moment
