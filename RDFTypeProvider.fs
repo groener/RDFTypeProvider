@@ -71,8 +71,6 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
         and findOrCreateClassType name graphType =
             match dictClassTypes.TryGetValue name with 
             | false,_ -> 
-                // this needs to change - erase down to dictionary type which will containt instances of the property values at runtime
-                // eg Actor 
                 let t = ProvidedTypeDefinition(name, baseType=Some typeof<RdfClass>,HideObjectMethods=true)
                 t.AddMemberDelayed( fun () -> ProvidedConstructor([],InvokeCode = fun _ -> <@@ RdfClass() @@>   ))
                 t.AddMembersDelayed (fun () -> makeMembersForRDFType name graphType)
@@ -82,19 +80,24 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                 let collection = ProvidedTypeDefinition(name + "Collection",  Some typeof<obj>, HideObjectMethods=true)
                 
                 individuals.AddMembersDelayed(fun () -> 
-                    // todo: to use the runtime connector, it must be extracted from the underlying service type (which erases to connector) ? somehow ?
-                    // orr... maybe just make individuals erase down to connector and create a new instance of it ?
-                            [ for ind in connector.getIndividuals(name,numOfIndividuals) |> Seq.distinctBy id  do 
-                                let p = ProvidedProperty(ind, typeof<string>, IsStatic = true,
-                                                        GetterCode = (fun args -> <@@(%%(args.[0]):obj) :?> string  @@>))
+                    // todo: use the runtime connector, it must be extracted from the underlying service type (which erases to connector) ? somehow ?
+                    // or... maybe just make individuals erase down to connector and create a new instance of it ?
+                    // just creating a new one at the moment/....
+                            [ for ind in connector.getIndividuals(name,numOfIndividuals) |> Seq.distinctBy id  do                                 
+                                let p = ProvidedProperty(ind, t, 
+                                                        GetterCode = (fun args -> 
+                                                        <@@
+                                                            let connector = new Connector(schemaUrl)                                                            
+                                                            RdfClass.Create(connector,ind)
+                                                         @@>))
                                 yield p
                             ])
 
-                collection.AddMember( ProvidedProperty("Individuals", individuals) ) 
+                collection.AddMember( ProvidedProperty("Individuals", individuals, GetterCode = fun _ -> <@@ obj() @@>) ) 
 
                 t.AddMembers [individuals;collection]
 
-                serviceType.AddMember( ProvidedProperty(name + "Collection", collection) ) 
+                serviceType.AddMember( ProvidedProperty(name + "Collection", collection, GetterCode = fun _ -> <@@ obj() @@> )) 
 
                 dictClassTypes.Add(name, t)
                 dictCollectionTypes.Add(t,(collection,individuals))
@@ -107,43 +110,11 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
 
         let insertRDFTypesForOneGraph (theDataTypesClassForGraph : ProvidedTypeDefinition, graphId) = 
             let allTypesForGraph = getRdfTypes  // graphId is not needed -- as only one graph
-
-
-            // Collect up the immediate nested types -- not yet done
             let theNestedTypesForTheDataTypesClassForDomain = ResizeArray<_>()
-            
-            
             
             for rdfTypeInGraph in allTypesForGraph do
                 let declaringType = theDataTypesClassForGraph
-                let itemType = 
-                    let (t,_) = findOrCreateClassType rdfTypeInGraph theDataTypesClassForGraph
-
-                    t
-                                      
-                let individualsType = 
-                    if numOfIndividuals > 0 then 
-                        let t = ProvidedTypeDefinition(rdfTypeInGraph + "Individuals",  Some typeof<obj>, HideObjectMethods=true)
-                        //t.AddMemberDelayed( fun () -> ProvidedConstructor([ProvidedParameter("data",typeof<string list>)], InvokeCode = fun args -> <@@ (%%args.[0]:(string list)) @@> ))
-                        t.AddMembersDelayed(fun () -> 
-                            [ for ind in connector.getIndividuals(rdfTypeInGraph,numOfIndividuals) |> Seq.distinctBy id  do 
-                                let p = ProvidedProperty(ind, typeof<string>, IsStatic = true,
-                                                        GetterCode = (fun args -> <@@(%%(args.[0]):obj) :?> string  @@>))
-                                yield p
-                            ])
-                        Some t
-                    else 
-                        None
-
-                     // two new functions in RDFConnection:
-                      //  1. getPropertiesOfIndWithResourceRange(individual: string) --> to get properties of an individual (where the range of the property is a resource (uri)
-                      //  2. getPropertiesOfIndWithLiteralRange(individual: string)  --> to get properties of an individual (where the range is a literal)
-
-
-               //dataContext.Actors.Individuals 
-
-
-                Option.iter itemType.AddMember individualsType   
+                let (itemType,_) = findOrCreateClassType rdfTypeInGraph theDataTypesClassForGraph
                 declaringType.AddMember itemType
                 
             theNestedTypesForTheDataTypesClassForDomain |> Seq.toArray
@@ -154,8 +125,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
         do serviceType.AddMembers(            
                 let makeTypeForGraphTypes(graphName:string) = 
                     let theDataTypesClassForGraph = ProvidedTypeDefinition(graphName, Some typeof<obj>,HideObjectMethods=false)
-                    theDataTypesClassForGraph.AddMembersDelayed(fun () -> insertRDFTypesForOneGraph (theDataTypesClassForGraph,graphName) |> Array.toList) 
-                    //theDataTypesClassForGraph.AddMembers(insertRDFTypesForOneGraph (theDataTypesClassForGraph, graphName) |> Array.toList)
+                    theDataTypesClassForGraph.AddMembers(insertRDFTypesForOneGraph (theDataTypesClassForGraph,graphName) |> Array.toList) 
                     theDataTypesClassForGraph
 
 
@@ -165,7 +135,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
           
         let rootType = ProvidedTypeDefinition(asm, ns, rootTypeName, baseType=Some typeof<obj>, HideObjectMethods=true)
         rootType.AddMember serviceType
-        rootType.AddMembersDelayed( fun () -> 
+        rootType.AddMembers( 
             [ let meth =
                 ProvidedMethod("GetDataContext", [], 
                                serviceType, IsStaticMethod = true,
@@ -173,15 +143,6 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
               meth.AddXmlDoc "<summary>Returns an isntance of the RDF provider using the static paramters</summary>"
               yield meth ] )
 
-
-
-
-        //theRootType.AddMembersDelayed (fun () -> 
-        //    [ yield ProvidedMethod ("GetRDFData", [], serviceType, IsStaticMethod=true,
-          //                          InvokeCode = (fun args -> <@@ " test " @@> ))
-                                    // XXX - 1   I cannot resolve the following line
-                                    //InvokeCode = (fun _args -> Expr.Call(createDataContext, [  Expr.Value apiKey; Expr.Value proxyPrefix; Expr.Value serviceUrl; Expr.Value useUnits; Expr.Value snapshotDate; Expr.Value useLocalCache; Expr.Value allowQueryEvaluateOnClientSide  ])))
-         //   ])
         rootType
 
 
