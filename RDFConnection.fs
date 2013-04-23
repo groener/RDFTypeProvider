@@ -17,11 +17,6 @@ type Connector(uri : string) =
     let endpoint = new VDS.RDF.Query.SparqlRemoteEndpoint(new Uri(uri))
     
     
-    let getValueOfResult(binding : string) =
-        let position = binding.IndexOf("=")
-        let subbinding = binding.Substring(position + 1)
-        subbinding.Trim()
-
 
         // currently, there is only one graph
     member this.getGraphs() =
@@ -29,10 +24,9 @@ type Connector(uri : string) =
 
 
 //  get explicit types: use "rdf:type"
-     // this function is tested and works
     member this.getExplicitTypes()  =
         let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?t WHERE { ?_s rdf:type ?t } LIMIT 80 ")
-        [for result in results ->  (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
      
    
      // select only properties with resources in the range (no literals!)
@@ -43,9 +37,9 @@ type Connector(uri : string) =
         
     // select onyl properties with literals in the range
     member this.getPropertiesOfRDFClassWithLiteralRange(className : string) =
-        let query = String.Concat(["SELECT DISTINCT ?property WHERE { <" ; className ;"> ?property ?_x . FILTER (isLiteral(?_x))  } LIMIT 100"])
+        let query = String.Concat(["SELECT DISTINCT ?property ?c WHERE { <" ; className ;"> ?property ?c . FILTER (isLiteral(?c))  } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()),None)]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString(),Some(result.[1].ToString()))) |> Seq.toList
    
     // get all properties of a RDFClass (not instance) -- argument it the class name
     // e.g. SELECT DISTINCT ?property WHERE { <http://dbpedia.org/ontology/Person>  ?property  ?_x } LIMIT 100
@@ -63,7 +57,7 @@ type Connector(uri : string) =
     member this.getObjectOfRDFClassAndProperty(className : string, propertyName : string) =
         let query = String.Concat(["SELECT DISTINCT  ?object WHERE { <" ; className ;"> <"; propertyName ; "> ?object } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
     
 
 
@@ -72,7 +66,7 @@ type Connector(uri : string) =
     member this.getRangeTypes (rdfPropertyName : string) =
         let query = String.Concat(["SELECT DISTINCT ?t WHERE { <" ; rdfPropertyName ; "> rdfs:range  ?t } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query);
-        [for result in results ->  (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
     // e.g. let cls2 = analyzer.getRangeTypesOfClass("http://dbpedia.org/ontology/Person", "http://www.w3.org/2000/01/rdf-schema#subClassOf")
@@ -80,7 +74,7 @@ type Connector(uri : string) =
     member this.getRangeTypesOfClass (domainClass, propName) =
         let query = String.Concat(["SELECT DISTINCT ?cls WHERE { <" ; domainClass ; "> <" ; propName ; "> ?cls } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query);
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
@@ -92,7 +86,7 @@ type Connector(uri : string) =
     member this.getDomainTypes (rdfPropertyName : string) =
         let query = String.Concat(["SELECT DISTINCT ?t WHERE { <" ; rdfPropertyName ; "> rdfs:domain  ?t } LIMIT 100 "])
         let results = endpoint.QueryWithResultSet(query);
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
@@ -101,7 +95,7 @@ type Connector(uri : string) =
         // tested and works
     member this.getExplicitProperties() =
         let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?prop WHERE {?prop rdf:type rdf:Property} LIMIT 100 " )
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
@@ -110,7 +104,7 @@ type Connector(uri : string) =
      // --> retrieving all properties does not make sense !!!
     member this.getAllProperties() =
         let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?prop WHERE {?_x ?prop ?_y  } LIMIT 100 ")
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
@@ -119,7 +113,7 @@ type Connector(uri : string) =
       // tested and works
     member this.getExplicitObjectProperties() =
         let results = endpoint.QueryWithResultSet("SELECT DISTINCT ?prop WHERE {?prop rdf:type owl:ObjectProperty} LIMIT 100 " )
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
@@ -130,7 +124,7 @@ type Connector(uri : string) =
         let limit = match limit with Some v -> v | _ -> 100
         let query = sprintf "SELECT DISTINCT ?ind WHERE { ?ind rdf:type  <%s> } LIMIT %i" className limit
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
         
 
     // Working with individuals
@@ -138,21 +132,26 @@ type Connector(uri : string) =
     member this.getClassesOfIndividual(individual: string) =
         let query = String.Concat(["SELECT DISTINCT ?cls WHERE { <" ; individual ;"> rdf:type ?cls } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
+        
     // get properties where the range is an individual of a resource type 
       // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
     member this.getPropertiesOfIndWithResourceRange(individual: string) =
-        let query = String.Concat(["SELECT DISTINCT ?property ?resource WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?resource . FILTER (!isLiteral(?resource)) } LIMIT 100" ])
+        let query = String.Concat(["SELECT DISTINCT ?property ?resource WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?resource . FILTER (!isLiteral(?resource)) FILTER (!isBlank(?resource)) } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
-        results.Results |> Seq.map(fun result -> (result.[0].ToString(),result.[1].ToString())) |> Seq.toList   
+        //results |> Seq.toList
+        results.Results |> Seq.map(fun result -> (result.[0].ToString(),result.[1].ToString())) |> Seq.toList
 
+      
     // get properties where the range is a literal 
       // this is similar to getPropertiesOfRDFClassWithResourceRange ... but here for individuals instead of classes
     member this.getPropertiesOfIndWithLiteralRange(individual: string) =
         let query = String.Concat(["SELECT DISTINCT ?property ?resource WHERE { <" ; individual ;"> rdf:type ?_cls . ?_cls ?property ?resource . FILTER (isLiteral(?resource)) } LIMIT 100" ])
         let results = endpoint.QueryWithResultSet(query)
         results.Results |> Seq.map(fun result -> (result.[0].ToString(),result.[1].ToString())) |> Seq.toList
+
+
         
         
 
@@ -161,17 +160,13 @@ type Connector(uri : string) =
     member this.getSuperClass(className : string) =
         let query = String.Concat(["SELECT DISTINCT ?cls WHERE { <" ; className ; "> rdfs:subClassOf ?cls } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(query)
-        [for result in results -> (getValueOfResult(result.ToString()))]
-
-
-
-
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
     member this.getPropertyTypesForUri(uri: string)  =        
         let queryString = String.Concat(["SELECT DISTINCT p? WHERE { <" ; uri ;"> rdf:type ?p } LIMIT 100"])
         let results = endpoint.QueryWithResultSet(queryString)
-        [for result in results -> (getValueOfResult(result.ToString()))]
+        results.Results |> Seq.map(fun result -> (result.[0].ToString())) |> Seq.toList
 
 
 
