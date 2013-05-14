@@ -1,0 +1,488 @@
+\documentclass{llncs} % , times
+
+\usepackage{amssymb, amsmath, graphicx, ltxtable, longtable, tabularx, url, ragged2e, xspace, verbatim, fancybox,tikz}
+\usepackage{scalefnt}
+\usepackage{relsize}
+\usepackage{paralist}
+\usepackage{listings}
+
+\newcommand{\ggr}[1]{\textcolor{magenta}{comment Gerd: \textit{#1}}}
+
+\lstdefinestyle{code}{language=java,
+        numbers=left,
+        xleftmargin=2em,
+        numberstyle=\tiny,
+        showstringspaces=false,
+        frame=leftline,
+        basicstyle=\ttfamily\footnotesize,
+        escapeinside={(*@}{@*)}
+        }
+\lstdefinestyle{npe}{
+	numbers=none,
+	numberstyle=\tiny,
+	%xleftmargin=2em,
+	showstringspaces=false,
+	frame=single,
+	basicstyle=\fontfamily{pcr}\footnotesize,
+        escapeinside={(*@}{@*)}
+	}	
+\lstdefinestyle{rdfexample}{
+	numbers=left,
+	numberstyle=\tiny,
+	%numbersep=0.1pt,
+	xleftmargin=2em,
+	showstringspaces=false,
+	frame=leftline,
+	basicstyle=\ttfamily\small,
+        escapeinside={(*@}{@*)}
+	}
+
+
+\newcommand{\fs}{\textsf{F\#}\xspace}
+
+%\newcommand{\rdfs}[3]{\textbf{#1}: $\frac{#2}{#3}$}
+\newcommand{\rdfs}[3]{\textbf{#1}: $\frac{\texttt{#2}}{\texttt{#3}}$}
+
+
+\begin{document}
+\title{Improving Programmability of Linked Data Sources}
+ 
+
+
+
+
+
+\author{Gerd Groener\inst{1}, Kenji~Takeda\inst{2}, Don Syme\inst{2}, Ross McKinlay\inst{2}}
+%\\ \textsf{groener@uni-koblenz.de}}
+
+\institute{$^1$Institute for Web Science and Technologies, University of Koblenz-Landau, Germany \\
+$^2$Microsoft Research Cambridge, UK}
+
+%\institute{Institute for Web Science and Technologies\\
+%University of Koblenz-Landau, Germany}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+
+%Information in RDF data sources is given by a set of explicit statements.
+%Additionally,  RDF inference consists of a set of rules to derive
+%implicit information from RDF data. This inference relies on
+%the data structure. When processing data in
+%programs and workflows, further information like type statements
+%can be derived based on the flow of the data. 
+%In this paper, we present an integration of RDF inference in
+%a data processing environment. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{TODO: Proposals for title}
+
+Some ideas for the title:
+\begin{itemize}
+	 \item Towards a Data-oriented Type System in Programming Environments
+
+   \item A type Bridging technique for RDF data sources
+	
+	  \item Adapter Layer for Web data integration
+
+   \item Connected Programming
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:intro}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% we just want to improve the programmability in web applications for linked data
+
+% problem
+Publishing linked (open) data on the Web has become a success story during the last years.
+RDF as the underlying representation formalism allows for flexible modeling of data such that
+users are able to easily share, distribute and interconnect their own data all over the world.
+Publishing and representing data on the Web is one side of the coin, but writing programs
+and applications that access and smoothly integrate RDF data  is another, rather challenging issue.
+
+One key problem is the fundamental gap how data is processed in both areas.
+RDF representation benefits from the flexible data model,
+while software engineering environments and programming languages rely on powerful typing mechanisms
+that guide programmers in their development by intelligent IDE support
+and avoid run-time exceptions that might be caused by incompatible types.
+
+
+% interesting
+The integration of large external data into programs and programming environments
+has already been investigated by dynamically typed programming languages.
+However, as it is in the nature of these languages, without type support when writing program code.
+Some initially approaches use adapter mechanism to integrate large data sources into statically
+typed programs. They rely on a rigit and well-known schema of the data source.
+Given such schema information, these approaches have led to good principles and toolins to
+allow for a smooth integration of data.
+
+Looking into linked data, the question arises whether
+a smooth integration is even possible for RDF data sources.
+In particular, we are faced with the following problems.
+First, schema information might be partially unknown and even incomplete when data are accesses.
+Instead, the structure among individuals, which is given in terms of properties between individuals,
+might be used for a data access with respect to a certain structure.
+Second, while the schema is rather fix, the underlying data tend to change rather often.
+Thus, programs at run time might incorporate such aspects.
+Third, the sheer size of data sources (like DBpedia)  might lead to a large number of types
+and accordingly to high type generation effort, while the program and system execution
+only need a part of the generated types.
+Thus, in an extreme case, this might even make the use of statically typed languages impossible.
+
+
+%At a first glance, an alignment between schema information in RDF (RDFS) and types in programming languages
+%is a rather straightforward means to allow for typing of data from RDF sources in program execution.
+%This is even a rather fix ``bridge'' since the schema in RDF sources tend to change rarely,
+%which is necessary for a stable type system.
+%However, at program run-time, there is no straightforward way how to incorporate implicit,
+%incomplete and steadily changing data from RDF sources within the execution of (statically) typed programs.
+%
+%%hard
+%Integrating Web data sources into types programming environments is a rather challenging problem.
+%First, data sources on the Web might be huge and are often connected to other sources and thus.
+%
+%(i) data change at run time
+%(ii) representations might be incomplete
+%(iii) data-oriented representation vs. class centric modeling
+%
+%
+%% related work
+%Existing approaches: Type Provider
+% Contribution
+
+In this paper, we present an integration and type bridge from RDF data sources to
+statically typed programming languages. We adopt the principles of \emph{type provider}
+to define an adapter in terms af a library (i.e., a dll-file) for statically typed programming languages. This adapter can
+be loaded in a program to access an arbitrary RDF data source that offers a SPARQL endpoint.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\section{Use Case and Application Context}
+%\section{Context and Problem Description}
+\section{What does programming Linked Data mean?}
+\label{sec:context}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+The linked data cloud consists of a variety of connected RDF data source, constituting a huge and steadily growing information space.
+In order to use these data in programs, an integration bridge is required such that
+the RDF data can be included in the program and type environment.
+
+
+When writing programs and Web applications, programmers use programming languages and environments like IDEs
+the write their code. 
+In statically typed programming languages, a powerful type system support programmers during the program design and 
+ensure type correctness in program execution. In particular, statically typed programming languages provide the following benefits:
+
+\begin{enumerate}
+	\item \textbf{Design Time Assistance:} The programming environment provides support programmers when writing code by
+	 context-sensitive auto-completion, interactive type checking (so called red squigglies) and quick information display like mouse-hover
+	and detailed documentation (e.g., by pressing F1 button). All these interactive features help programmers in writing their code
+	and give early feedback (at design time) about program correctness. 
+	\item \textbf{Run Time Assistance:} When a statically program is compiled, type definitions and their usage in programs
+	        are checked. Thus, at run time, we can rely on a proper type system that offers features like type casts,
+					 type checking and type inference. Run time errors and exceptions during program execution based on
+					 incorrect type usage and type mismatch are already detected during design and compilation, and thus, might not
+					cause errors at run time. Types can be even used to optimize type interpretations.
+					\ggr{I can't remember what the last sentence about optimize / drive interpretations mean.}
+					
+\end{enumerate}
+
+While these benefits of statically typed programming languages are obvious,
+the key question is how can such features be achieved when we access and integration RDF data sources,
+i.e., types in our type system refer to RDF classes and collections of individuals.
+This means, that types are used in the usual programming manner, for instance RDF individuals
+have all properties that are defined by the RDF classes. This is illustrated in the following example.
+
+Assume a developer is programming an application for a mobile phone that accesses data about movies, retrieved
+from RDF data sources like DBpedia\footnote{DBpedia: \url{http://dbpedia.org}} via a SPARQL endpoint,
+e.g., as provided by DBpedia\footnote{DBpedia SPARQL Endpoint: \url{http://dbpedia.org/sparql}}.
+
+\vspace{0.8em}
+\noindent
+\textbf{Step 1: Find a Class.}
+First of all, the programmer decides to use DBpedia as a data source since it is well connected to other
+data sources. As a first step, the programmer has to look for a dedicated class for ``movie'' in the data source.
+For this purpose, the data source must be explored, e.g., by starting from a top RDF class and moving downwards the class hierarchy.
+
+\emph{Problem:} Thus, we need means to explore a data source and find the dedicated class.
+
+\vspace{0.8em}
+\noindent
+\textbf{Step 2: Define a Class / Type for  a class.}
+Once, a class for a ``movie'' is found, e.g., \texttt{http://dbpedia.org/ontology/movie}, the programmer has
+to define this class in the program.
+
+\begin{lstlisting}[style=code, caption={Type Definition for RDF Class ``Movie''}, label={lst:movietype}]
+
+// The "Movie" Type
+type Movie = {
+  id : URI
+  rdfs:label "Movie"
+}
+\end{lstlisting}
+
+The \emph{problem} we have to solve here is to map the RDF class description into a type definition in the program code.
+
+\vspace{0.8em}
+\noindent
+\textbf{Step 3: Define Related Types / Classes.}
+Looking into the RDF class, we see that ``Movie'' is a subclass of ``Work'' (\texttt{http://dbpedia.org/dbpedia-owl/Work}).
+Hence, if we want to reflect this characteristic, we need to define a type for class ``Work'' as well.
+
+\begin{lstlisting}[style=code, caption={Type Definition for RDF Class ``Movie'' and ``Work''}, label={lst:worktype}]
+
+// The "Work" Type
+type Work = {
+  id : URI
+  rdfs:label "Work"
+}
+
+// Again the "Movie" Type as Subclass of "Work"
+type Movie = {
+  inherit Work
+  id : URI
+  rdfs:label "Movie"
+}
+\end{lstlisting}
+
+
+Obviously, besides the ``Work'' class, other class might be created as Movie is related to them. This procedure might even continue since
+these other classes like ``Work'' can depend on other classes.
+
+Given the sheer size of linked data sources (or even the linked data cloud), the key \emph{problem} is which classes need to be 
+integrated in a program, i.e., for which RDF classes is a type definition necessary. Building types for all classes of a
+data source is definitely not scalable, ane even not needed since a particular application 
+might only a part of the classes.
+Thus, the question is whether it is possible to build types only \emph{on demand}.
+
+\vspace{0.8em}
+\noindent
+\textbf{Step 4: Define individuals of classes.}
+In our application, we want to mange concrete movies, which can be derived from the data sources,
+as individuals of this class. Using a SPARQL query we can retrieve all individuals of class ``Movie''.
+For instance, we get the individual \texttt{http://dbpedia.org/page/Skyfall} for the movie ``Skyfall''.
+Accordingly, we can build an instance of movie.
+
+\begin{lstlisting}[style=code, caption={Individual of  ``Movie'' }, label={lst:skyfall}]
+  let skyfall = Movie(`http://dbpedia.org/page/Skyfall')
+\end{lstlisting}
+
+
+\vspace{0.8em}
+\noindent
+\textbf{Step 5: Incorporate Properties of Individuals.}
+It is in the nature of the flexible RDF model that properties can be defined for individuals 
+without explicit definition of these properties for classes.
+
+
+%requires means for bridging between the data representation on the Web and 
+%Assume data from Wikipedia should be incorporated in an application, e.g., a touristic company makes
+%to use published and up-to-date data about cities, landscapes and prominent people that are associated with citites.
+%To do this, the company decides to retrieve data from DBpedia and and completely include / integrate these
+%data in their programs.
+%When writing programs and Web applications that access these data and especially integrate them such that they
+%In general, connecting and integrating information spaces in programming languages is an essential part on informaiton-rich programming.
+%One of the most prominent source is DBpedia, where
+%parts of Wikipedia data are represeted as RDF,  and access to these data is offered via SPARQL endpoints. 
+%The linked data cloud is mainly accessibly by SPARQL requests, retrieving
+%classes (schema information) and data.
+%However, the integration of data into a statically typed programming language is more than querying a data source.
+
+
+
+% figure system architecture
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Contribution}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We distinguish between challenges and our corresponding contributions 
+that are related to (i) the programming environment, (ii)~ the mapping from
+schema and data requests to SPARQL queries and (iii)~the Semantic Web and linked data
+oriented investigations.
+
+\subsection*{Programming Language and Environment}
+
+We present a type bridge / adapter in order to create types for RDF classes that
+are retrieved from linked data sources. In particular, this includes the following aspects.
+
+\ggr{Here we need a description of type provider features.}
+
+\paragraph*{\bf Type Integration and Type Inference.}
+When deriving RDF data from external data sources, the key problem is how to integrate
+such types into the host programming schema. \\
+\textbf{Contribution:} Types are built based on the schema information that is obtained
+from the RDF data source.   \\
+
+\paragraph{\bf Type Definition on Demand --- Scalability.}
+As data sources on the Web tend to be huge, it is not a promising idea to
+build the types for all classes of a data source.
+Obviously, types are only needed if particular applications need to access them.
+\textbf{Contribution:} on demand typing based on the current element. \\
+
+
+\paragraph*{\bf Incorporate Data Changes.}
+It is obvious that RDF data change rather frequently, while the
+schema remains stable. Thus, it is meaningful to build types wrt.\ schema (at design time)
+and populate these types at run time.\\
+\textbf{Contribution:} Types are built wrt.\ the schema (class definitions in RDF).
+Classes are populated by individuals at run time.
+This implicitly also takes changes of the data (individuals) into account. \\
+
+
+\subsection*{Semantic Web and Linked Data}
+
+While our type bridge is built to access and integrate RDF data into programs,
+we also use Semantic Web technologies and built the data access upon
+these existing means. In particular, we apply SPARQL queries, the SPARQL entailment regime, which
+includes RDF(S) entailment, and we actually rely on best practices for publishing linked data.
+
+\paragraph*{\bf Derive fine-grained Schema from RDF Data.}
+Hierarchies of classes and also properties in RDF data can be quite extensive.
+Besides this, domain and range restrictions of properties that entities can be classes
+in case this is not explicitly stated. \\
+\textbf{Contribution:} We incorporate RDF entailment regime, which is supported by SPARQL 1.1
+in order to derive a fine-grained type system / schema.
+
+
+\paragraph*{\bf Navigation on Class vs. Instance level.}
+In RDF data sources, property specifications at the class level are often rare,
+for instance in DBpedia classes have only three or four properties and these are actually
+quite generic one, derived from super-classes. Instead, the most interesting way for navigating
+is at the instance level. But, how can we cover properties if their corresponding class
+in the programming language does not have this property. We can even not assume this property
+for the class since the individuals do not necessarily share their properties. \\
+\textbf{Contribution:}  We offer a two-layered navigation in RDF sources
+
+\paragraph*{\bf Property-based Classes.}
+RDF data have type statements that assign data (individuals) to classes.
+However, it has been shown that besides the type statements
+properties of individuals are an essential means to group individual to a kind of
+classes instead of only relying on explicitly specified types. \\
+\textbf{Contribution:} We allow the specification of types as a set of properties. \\
+
+
+\paragraph*{\bf Set-based Classes.}
+Following the OWL-based set semantics, classes in the RDF sense can be considered as
+unions or intersections of RDF classes. \\
+\textbf{Contribution:} We allow the specification of types as a unions and intersection of existing types. \\
+
+
+\subsection{Semantic Web and Linked Data}
+
+\ggr{not sure, whether the mapping to SPARQL is worth to mention.}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Foundations}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Foundations: RDF and SPARQL
+
+Foundations: \fs and Type Provider
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{RDF Type Provider --- Design and Implementation}
+\label{sec:design}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Life Cycle: Program Design Time and Run time}
+  explain the principle: (i) writing a TP, (ii) using a type provider
+	
+\subsection{Type Definitions}
+  explain our work   
+ 
+\begin{itemize}
+	\item Define provided classes
+	\item define provided properties
+	\item subclass navigation
+	
+\end{itemize}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Type Provider --- Usage and Features}
+\label{sec:usage}
+
+ What are the concrete features here:
+
+\begin{itemize}
+	\item design time: intellisense, autocompleting, when designing types
+  \item run time: lazy typing
+\end{itemize}
+
+ 
+ 
+
+%\subsection{LINQ Query Expressions}
+%
+%LINQ (language-integrated query) is a set of technologies of query capabilities directly in .NET languages.
+%LINQ can transform data from any LINQ enabled data source, like an SQL database, into a .NET program.
+%LINQ queries consists of three clauses: (i)~\textsf{from} (specifies the data source)
+%(ii)~\textsf{where} (applies filters) and (iii)~\textsf{select} (specifies the type of return element).
+%For instance:
+%\begin{lstlisting}
+%var evenNumQuery = 
+     %from num in numbers} 
+     %where (num % 2) == 0
+     %select num;
+%\end{lstlisting}
+		%
+%LINQ is a standard query language for traversal, filter and projection.
+%LINQ is primarily defined for collections and .NET arrays.
+%
+%
+%LINQ seems to be rather simple to extract data from data sources, e.g., given a list of records
+%a LINQ query can specify which (parts of) records will be retrieved and what is the condition.
+%For instance, the \textbf{data source} can be an array.  Then, the \textbf{query} specifies which information to retrieve from teh data source.
+%
+%
+%
+%Linq2Rdf is a semantic Web framework for .NET. It supports the integration of SPARQL queries in \fs programs.
+%\url{http://www.hookedonlinq.com/LINQTORDF.ashx}
+%
+%
+%SPARQL query: get all RDF classes: \\
+%\begin{lstlisting}
+%SELECT DISTINCT ?t WHERE { ?_s rdf:type ?t } LIMIT 100
+%\end{lstlisting}
+%
+
+%\begin{lstlisting}
+%from character in Characters
+%where character.Episodes > 120
+%select character;
+%\end{lstlisting}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\section{Discussions Regarding the  Implementation}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%\paragraph{Navigation on Individual level}
+%
+%- if we are at individual level, we only want to navigate on the properties of a particular individual (not on properties of other individuals)
+%
+%- how are we doing at the class level (problem: in dbpedia we have only four properties defined at the class level --- and this are always the same)
+   %+ is the current sampling a meaningful approach?
+ %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bibliographystyle{splncs}
+\bibliography{references}
+
+
+
+\end{document}
