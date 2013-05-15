@@ -17,15 +17,7 @@
         basicstyle=\ttfamily\footnotesize,
         escapeinside={(*@}{@*)}
         }
-\lstdefinestyle{npe}{
-	numbers=none,
-	numberstyle=\tiny,
-	%xleftmargin=2em,
-	showstringspaces=false,
-	frame=single,
-	basicstyle=\fontfamily{pcr}\footnotesize,
-        escapeinside={(*@}{@*)}
-	}	
+
 \lstdefinestyle{rdfexample}{
 	numbers=left,
 	numberstyle=\tiny,
@@ -43,6 +35,7 @@
 %\newcommand{\rdfs}[3]{\textbf{#1}: $\frac{#2}{#3}$}
 \newcommand{\rdfs}[3]{\textbf{#1}: $\frac{\texttt{#2}}{\texttt{#3}}$}
 
+\pagenumbering{arabic}
 
 \begin{document}
 \title{Improving Programmability of Linked Data Sources}
@@ -387,23 +380,83 @@ unions or intersections of RDF classes. \\
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Foundations: RDF and SPARQL
+An RDF\footnote{RDF Primer: \url{http://www.w3.org/TR/rdf-primer}} data source consists of at least one RDF graph, which is a set of RDF triples $(s, p, o)$
+that consists of subject (s), predicate or (p)  and object (cf.~Def.~\ref{def:rdf}).
+
+\begin{definition}[RDF Graph]
+\label{def:rdf}
+Let $U$ be a set of URIs, $L$  a set of literals and $B$ a set of blank nodes,
+with $U \cap L \cap B = \emptyset$.
+
+An RDF graph is defined as:
+$\mathrm{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B) \} $. 
+\end{definition}
+
+
+SPARQL\footnote{SPARQL 1.1 Query Language: \url{http://www.w3.org/TR/sparql11-query}} 
+is a query language for RDF graphs with  \textsf{select}, \textsf{from} and \textsf{where} clauses.
+Like an RDF graph, the graph pattern of the \textsf{where} clause consists of RDF triples, in which
+variables are allowed as subjects, predicates and objects of triples.
+The result of a query is a binding of the variables in the \textsf{select} clause,
+while the binding is determined by matching of triples from the \textsf{where} clause
+to triples in the RDF graph $G$.
+
+In SPARQL 1.1, which we are referring to in this paper, the graph matching principle between triples in the query and the data source
+is extended by entailment relations, as defined by the SPARQL entailment regimes\footnote{SPARQL 1.1 Entailment Regimes:
+\url{http://www.w3.org/TR/sparql11-entailment}}. Among others, the entailment regimes contain RDF and RDFS entailment rules
+Thus, triple matching is extended to triples that can be derived from an RDF graph $G$. Formally, we denote
+this extended set of triples, which can be derived by RDF(S) entailment as Materialized Grapn (cf.~Def.~\ref{def:mat}).
+(The symbol $\models_{\mathcal{T}}$ denotes RDF(S) entailment.)
+
+\begin{definition}[Materialized RDF Graph]
+\label{def:rdf}
+Let $\mathrm{G}$ be an RDF graph. A materialzed graph $\hat{G}$ is defined as follows:
+
+$\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B)  | G \models_{\mathcal{T}} (s, \ p, \ o) \}  $. 
+\end{definition}
+
+
+%These rules derive implicit relations between classes, individuals and classes for individuals (\textsf{instanceOf} relation) based
+%on explicit stated relations and domain and range restrictions of properties.
 
 Foundations: \fs and Type Provider
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{RDF Type Provider --- Design and Implementation}
+\section{A Type Bridge for RDF}  
 \label{sec:design}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\ggr{not sure we use `bridge', `adapter' or `type provider'?}
+
+
+Our goal ist to build an integration bridge for arbitrary RDF data sources with a SPARQL endpoint
+in order to access and integrated RDF data into a statically typed program on demand.
+When using these bridge, it should not be part of the actual developed application,
+instead it is just used as a library. In the following, we will see some technical details how
+the bridge is developed.
 
 \subsection{Life Cycle: Program Design Time and Run time}
   explain the principle: (i) writing a TP, (ii) using a type provider
-	
+
+Our type bridge is a compile time component. It has static parameters like
+the address (URI) of the SPARQL endpoint and optional parameters like the number
+of individuals that should be retrieved.  
+After a successful connection to the SPARQL endpoint, we get the following 
+artefacts for data access and connection:
+
+\begin{enumerate}
+	\item The \emph{signature} of the data source, which is given by classes and properties in 
+	  the data source, is retrieved.  \ggr{not really retrieved --- can be retrieved}
+	\item The \emph{type creating} on  demand.
+\end{enumerate}	
+
+
 \subsection{Type Definitions}
-  explain our work   
+
+The type bridge consists of two components: (i)~the data source \emph{connector} and (ii)~the
+\emph{type generation description}. The latter one is a kind of compile-time meta-programming construct.
  
 \begin{itemize}
 	\item Define provided classes
