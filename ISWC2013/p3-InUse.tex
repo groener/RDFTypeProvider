@@ -439,12 +439,27 @@ Thus, triple matching is extended to triples that can be derived from an RDF gra
 this extended set of triples, which can be derived by RDF(S) entailment as Materialized Grapn (cf.~Def.~\ref{def:mat}).
 (The symbol $\models_{\mathcal{T}}$ denotes RDF(S) entailment.)
 
-\begin{definition}[Materialized RDF Graph]
+We use a distinction between classes (schema) and data in the RDF graph.
+We refer an entitiy $C$ (subject or predicate in a triple) as a class (or RDF class).
+This is described by the second part of Def.~\ref{def:rdf}.
+ 
+
+\begin{definition}[Materialized RDF Graph and RDF Classes]
 \label{def:rdf}
+\begin{enumerate}
+	\item 
 Let $\mathrm{G}$ be an RDF graph. A materialzed graph $\hat{G}$ is defined as follows:
 
 $\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B)  | G \models_{\mathcal{T}} (s, \ p, \ o) \}  $. 
+
+\item
+$C$ is referred to as a class (or RDF class) if one of the following conditions hold:
+(i) there is a type statement  (s rdf:type C) $\in \hat{G}$,
+ (ii) there is a domain restriction (s rdfs:domain C) $\in \hat{G}$ or 
+(iii) there is a range restriction (s rdfs:range C) $\in \hat{C}$ and C is not a datatype.
+\end{enumerate}
 \end{definition}
+
 
 
 %These rules derive implicit relations between classes, individuals and classes for individuals (\textsf{instanceOf} relation) based
@@ -609,18 +624,39 @@ To do this, we use dictionaries in the type dictionaries (hash maps) to ensure t
 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Type Provider --- Usage and Features}
+\section{Linked Data Programming --- Type Bridge in-use}
 \label{sec:usage}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
- What are the concrete features here:
+The type generation definition, as presented in Sect.~\ref{sec:design}, can be applied for arbitrary RDF data sources.
+The usage in two steps. First, when writing a program, e.g., an application for a mobile phone (cf.~Sect.~\ref{sec:context}),
+gets the full support from the underlying static type system.
+Second, when the application is used at run-time, these generated types are treated as basic .NET types in \fs.
 
-here we have to show how the requirements are met
+Consider again the program development from the original example in Sect.~\ref{sec:design}.
 
+\paragraph{Navigation Principle}
+
+The navigation uses the usual dot-operator, as it is also used in other type bridges in \fs.
+The navigation works as follows:
+\begin{itemize}
+	\item The top-level element is the data source, e.g., DBpedia. This is represented
+	   by the type \texttt{http://dbpedia.org}. When pressing the dot we get a list of all
+		 classes.
+	\item 
+\end{itemize}
 
 \begin{itemize}
 	\item design time: intellisense, autocompleting, when designing types
   \item run time: lazy typing
 \end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Evaluation}
+\label{sec:eval}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
