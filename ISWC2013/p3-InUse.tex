@@ -6,14 +6,17 @@
 \usepackage{paralist}
 \usepackage{listings}
 
+\usepackage{tikz} 
+
+
 \newcommand{\ggr}[1]{\textcolor{magenta}{comment Gerd: \textit{#1}}}
 
 \lstdefinestyle{code}{language=java,
         numbers=left,
-        xleftmargin=2em,
+        xleftmargin=1em,
         numberstyle=\tiny,
         showstringspaces=false,
-        frame=leftline,
+        frame=single,
         basicstyle=\ttfamily\footnotesize,
         escapeinside={(*@}{@*)}
         }
@@ -31,6 +34,24 @@
 
 
 \newcommand{\fs}{\textsf{F\#}\xspace}
+
+\newcommand{\nr}[1]{\textbf{NR #1}}
+
+%\newcommand{\nr}[1]{
+%\begin{tikzpicture}[auto,node distance=1cm,thin] 
+  %\tikzstyle{every node}=[shape=circle,draw=none, 
+    %text=black] 
+  %\node (1) {\texttt{NR #1}}; 
+%\end{tikzpicture} }
+%
+%\newcommand{\tr}[1]{
+%\begin{tikzpicture}[auto,node distance=1cm,thin] 
+  %\tikzstyle{every node}=[shape=circle,draw=none, 
+    %text=white,shading=ball] 
+  %\node (1) {\texttt{TR #1}}; 
+%\end{tikzpicture} }
+
+\newcommand{\tr}[1]{\textbf{TR #1}}
 
 %\newcommand{\rdfs}[3]{\textbf{#1}: $\frac{#2}{#3}$}
 \newcommand{\rdfs}[3]{\textbf{#1}: $\frac{\texttt{#2}}{\texttt{#3}}$}
@@ -163,15 +184,20 @@ be loaded in a program to access an arbitrary RDF data source that offers a SPAR
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-The linked data cloud consists of a variety of connected RDF data source, constituting a huge and steadily growing information space.
-In order to use these data in programs, an integration bridge is required such that
-the RDF data can be included in the program and type environment.
-
+The RDF data model is basically a graph, which is constitued of a set of subject-predicate-object triples.
+This graph covers both the schema in terms of classes and the data in terms of individuals
+The usage of certain predicates like \textsf{rdf:type}, \textsf{rdfs:domain} and \textsf{rdfs:range}
+and classes like \textsf{rdf:Class} indicate that certain entities in the graph are classes.
+Thus, this is an evidance for a schema.
 
 When writing programs and Web applications, programmers use programming languages and environments like IDEs
 the write their code. 
-In statically typed programming languages, a powerful type system support programmers during the program design and 
+Programming languages typically rely on some kind of schema or types
+where types (or classes) serve as containers to manage data.
+The organization of types in a so-called type system is an essential benefit of statically
+typed languages where a powerful type system support programmers during the program design and 
 ensure type correctness in program execution. In particular, statically typed programming languages provide the following benefits:
+
 
 \begin{enumerate}
 	\item \textbf{Design Time Assistance:} The programming environment provides support programmers when writing code by
@@ -192,6 +218,8 @@ the key question is how can such features be achieved when we access and integra
 i.e., types in our type system refer to RDF classes and collections of individuals.
 This means, that types are used in the usual programming manner, for instance RDF individuals
 have all properties that are defined by the RDF classes. This is illustrated in the following example.
+In each step, we see the corresponding requirement that has to be addressed by a type bridge.
+We can distinguish between \emph{navigation requirement (NR)} and \emph{typing requirement (TR)}.
 
 Assume a developer is programming an application for a mobile phone that accesses data about movies, retrieved
 from RDF data sources like DBpedia\footnote{DBpedia: \url{http://dbpedia.org}} via a SPARQL endpoint,
@@ -204,7 +232,7 @@ First of all, the programmer decides to use DBpedia as a data source since it is
 data sources. As a first step, the programmer has to look for a dedicated class for ``movie'' in the data source.
 For this purpose, the data source must be explored, e.g., by starting from a top RDF class and moving downwards the class hierarchy.
 
-\emph{Problem:} Thus, we need means to explore a data source and find the dedicated class.
+\nr{1}: Thus, we need means to explore a data source and find the dedicated class.
 
 \vspace{0.8em}
 \noindent
@@ -221,7 +249,7 @@ type Movie = {
 }
 \end{lstlisting}
 
-The \emph{problem} we have to solve here is to map the RDF class description into a type definition in the program code.
+\tr{1}: The problem we have to solve here is to map the RDF class description into a type definition in the program code.
 
 \vspace{0.8em}
 \noindent
@@ -253,7 +281,8 @@ Given the sheer size of linked data sources (or even the linked data cloud), the
 integrated in a program, i.e., for which RDF classes is a type definition necessary. Building types for all classes of a
 data source is definitely not scalable, ane even not needed since a particular application 
 might only a part of the classes.
-Thus, the question is whether it is possible to build types only \emph{on demand}.
+
+\tr{2}: Thus, the question is whether it is possible to build types only \emph{on demand}.
 
 \vspace{0.8em}
 \noindent
@@ -267,6 +296,7 @@ Accordingly, we can build an instance of movie.
   let skyfall = Movie(`http://dbpedia.org/page/Skyfall')
 \end{lstlisting}
 
+\tr{3} Types are used to instantiate individuals. 
 
 \vspace{0.8em}
 \noindent
@@ -274,6 +304,7 @@ Accordingly, we can build an instance of movie.
 It is in the nature of the flexible RDF model that properties can be defined for individuals 
 without explicit definition of these properties for classes.
 
+\nr{2}: Navigation along properties must be able for individuals.
 
 %requires means for bridging between the data representation on the Web and 
 %Assume data from Wikipedia should be incorporated in an application, e.g., a touristic company makes
@@ -421,6 +452,24 @@ $\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B)  
 
 Foundations: \fs and Type Provider
 
+\begin{definition}[Type System]
+\label{def:type}
+A type system is a tuple $(\Gamma, \mathcal{T})$
+Let $\Gamma$ be a domain,  $\mathcal{T}$ a set of type expressions (or types for short).
+$\top \in \mathcal{T}$ is the most general type expression that is a super-type of all other types.
+
+For each element in the domain $e \in \Gamma$ there is a type $\tau \in \mathcal{T}$ such
+that $e$ is an individual of type $\tau$: $e: \tau$
+\end{definition}
+
+
+\begin{definition}[Class-Type Mapping]
+\label{def:map}
+An RDF graph $G$ is mapped to a type system $(\Gamma, \mathcal{T})$ by a class-type mapping $m$.
+Each (named) RDF class $C$ is mapped to a type $\tau \in \mathcal{T}$. Each
+property is mapped to a type tuple $(\tau_1, \tau_2) \in \mathcal{T} \times \mathcal{T}$.\footnote{Note: If
+the domain or range class of a property is unknown, the corresponding types are $\top$.}
+\end{definition}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -430,6 +479,7 @@ Foundations: \fs and Type Provider
 
 \ggr{not sure we use `bridge', `adapter' or `type provider'?}
 
+\ggr{we have to make the distinction clear: (i) the work we did (meta-level) and (ii) how the TP is used as a library (run time)}
 
 Our goal ist to build an integration bridge for arbitrary RDF data sources with a SPARQL endpoint
 in order to access and integrated RDF data into a statically typed program on demand.
@@ -437,38 +487,135 @@ When using these bridge, it should not be part of the actual developed applicati
 instead it is just used as a library. In the following, we will see some technical details how
 the bridge is developed.
 
-\subsection{Life Cycle: Program Design Time and Run time}
-  explain the principle: (i) writing a TP, (ii) using a type provider
+\subsection{Features of the Type Bridge}
+  
+According to Sect.~\ref{sec:context}, we aim at achieving two groups of requirements:
+navigation requirements (NR) and typing requirements (TR). Navigation is needed since the an RDF graph does not explicitly 
+distinguish between schema and data, as for instance in relational databases. Thus, the navigation is
+used to find those elements in the graph that should be integrated as types and their corresonding data (individuals) in a program.
+Aspects of the integration into the programming type system are reflected by the typing requirments (TR).
 
-Our type bridge is a compile time component. It has static parameters like
-the address (URI) of the SPARQL endpoint and optional parameters like the number
-of individuals that should be retrieved.  
-After a successful connection to the SPARQL endpoint, we get the following 
-artefacts for data access and connection:
+In order to meet the requirements, the type bridge has to provide the following functionality.
+First, the exploration of an RDF graph must be supported. Thus, we need to be able to hook into the graph and then
+follow the properties from one entity to the next one. While this is possible for RDF classes and individuals.
+Second, the retrieval of the currently explored entity and its properties must be supported.
 
-\begin{enumerate}
-	\item The \emph{signature} of the data source, which is given by classes and properties in 
-	  the data source, is retrieved.  \ggr{not really retrieved --- can be retrieved}
-	\item The \emph{type creating} on  demand.
-\end{enumerate}	
+The type bridge, its features and its context of use is illustrated in Fig.~\ref{fig:context}.
+The design and implementation of the type bridge is described in the next part of this section.
+
+\begin{figure}
+	\centering
+		\includegraphics[width=0.98\linewidth]{./figs/context.png}
+	\caption{Functionality and Context of the Type Bridge}
+	\label{fig:context}
+\end{figure}
+
 
 
 \subsection{Type Definitions}
 
+Our type bridge is a compile time component. It has static parameters like
+the address (URI) of the SPARQL endpoint.
 The type bridge consists of two components: (i)~the data source \emph{connector} and (ii)~the
 \emph{type generation description}. The latter one is a kind of compile-time meta-programming construct.
- 
-\begin{itemize}
-	\item Define provided classes
-	\item define provided properties
-	\item subclass navigation
+In the following, we consider both components in detail.
+
+The connector establishes a connection to the SPARQL endpoint. It serves as a mediator
+between the type generation descrition and the external data source.
+The connector gets as an argument the URI of the SPARQL enpoint
+in order to establish a connection to the SPARQL endpoint.
+
+
+The connector consists of functions that are used by the type generation description
+to navigate in the data source and to retrieve data. Internally, these functions
+encode SPARQL queries to implement both tasks the navigation and the retrieval.
+
+%
+%
+%After a successful connection to the SPARQL endpoint, we get the following 
+%artefacts for data access and connection:
+%
+%\begin{enumerate}
+	%\item The \emph{signature} of the data source, which is given by classes and properties in 
+	  %the data source, is retrieved.  \ggr{not really retrieved --- can be retrieved}
+	%\item The \emph{type creating} on  demand.
+%\end{enumerate}	
+
+
+
+
+
+The type generation description defines how types with their parameters,
+properties and methods are built.
+
+The first part is the definition of the type itself, which requires at least the
+name of the type and its erasure, i.e., the type this type can be erased to.
+
+Let C be the class, which is retrieved by a SPARQL query. The type generation description in \fs
+is as follows:
+
+\begin{lstlisting}[style=code, caption={\textbf{Type Rule:} Type Generation Description for RDF Class C}, label={lst:providedClass}]
+t = ProvidedTypeDefinition(cName, baseType=Some typeof<obj>)
+\end{lstlisting}
+
+In Listing~\ref{lst:providedClass}, \texttt{cName} denotes the name of class $C$, e.g., the URI of $C$.
+The \texttt{baseType} gives the ``super-type'' from which the generated type $t$ inherits from.
+As an example, assume we specify a type generation description for RDF classes.
+It description, which is a compile-time meta-programming constuct, is
+used to build RDF classes, e.g., the ``Movie'' class in our example.
+
+
+Types can have properties, accordingly if a type will be created, the corresponding properties
+have to be created too. These properties are obtained from the RDF data source and should
+be directly reflected in the source code that will specify the type.
+Accordingly, the type generation description describes how to obtain properties and to
+generate the properties of these types.
+
+\begin{lstlisting}[style=code, caption={\texttt{Property Rule:} Add Property for Class C}, label={lst:providedProp}]
+ let p = ProvidedProperty(pName, typeof<string>, 
+    GetterCode = (fun args -> 
+		     <@@(%%(args.[0]):obj) :?> string  @@>))
+  // add this property (delayed)
+ t.AddMemberDelayed(p)
+ \end{lstlisting}
+
+In Listing~\ref{lst:providedProp}, \texttt{pname} denotes the name of the property (e.g., the URI), \texttt{typeof} gives the
+super-tye (string in this case) and \texttt{GetterCode} is a so-called quotation that specifies the result of a property selection at run time.
+In this simple case, the string representation of the property itself is the meaning of the property.
+In the second line, the peroperty is ``added'' to the type. Note, this this depends on the concrete generated type 
+when the bridge is used in a concrete program. For instance, if a type for RDF class ``Movie'' is created (according to the rule in Listing~\ref{lst:providedClass}),
+the properties (predicates in the RDF graph) of ``Movie'' are generated and added (according to the property rule in Listing~\ref{lstProvidedProp}).
+
+Finally, individuals can be added to classes according to Listing~\ref{lst:providedIndColl}.
+For this, a new type would be created with the name of the class (denoted by \texttt{cName}) and the
+suffix ``Individuals''. This type is added to t. In this collection, all individuals are contained.
+
+\begin{lstlisting}[style=code, caption={\texttt{Individual Rule:} Add Individuals (set / collection) to Class C}, label={lst:providedIndColl}]
+let individuals = 
+   ProvidedTypeDefinition(cname+"Individuals", Some typeof<obj>)
+\\ add these individuals
+individuals.AddMembersDelayed()
+\\  add indiviual collection to type 
+t.AddMemberDelayed(indiviuals)
+ \end{lstlisting}
+
+
+\subsection{Additional Constructs}
+
+According to the integration principle, types are created when a certain entity is retrieved from the graph. While this entity is reached
+by navigation along the graph. Thus, we can also have some cycles in the exploitation. In order to achieve skalability in
+statically typed languages, it has to be ensured that a type for entity is only created once.
+To do this, we use dictionaries in the type dictionaries (hash maps) to ensure that types are unique and to avoid infinite loops.
+
 	
-\end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Type Provider --- Usage and Features}
 \label{sec:usage}
 
  What are the concrete features here:
+
+here we have to show how the requirements are met
+
 
 \begin{itemize}
 	\item design time: intellisense, autocompleting, when designing types
@@ -476,6 +623,32 @@ The type bridge consists of two components: (i)~the data source \emph{connector}
 \end{itemize}
 
  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related Work}
+\label{sec:rw}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% navigation and source exploration
+Related work can be disinguished into two groups: the exploration of data sources (data access)
+and the integration into programming environments.
+
+Several related approaches study the exploration and visualization of Web data sources. 
+The aim of this work is to allow users without SPARQL experiences an easy means to
+get information from linked data sources.
+tFacet~\cite{tFacet} and gFacet~\cite{heim2008gfacet} are tools for faceted exploration of linked data sources
+via SPARQL enpoints. fFacet provides a tree view for navigation, while gFacet has a graph facet for browsing.
+The navigation of RDF data for the purpose of visualizing parts of the data source is studied in~\cite{DBLP:conf/iv/DokulilK08},
+but with the focus on visualization aspects like opitimization of the displayed graph area.
+In contrast our work, these approaches do not consider any kind of integration aspects like code generation and typing.
+Furthermore, the navigation is rather restricted to a simple hierarchical top-down navigation.
+
+Data\footnote{OData (Open Data Protocol): \url{http://www.odata.org/}}  provides a protocol to query and update external data via RESTful service.
+OData contains a data model, logically based on an ER model, such that the protocol can describe both data (called entities) and types (entity types).
+Some implementations provide access from OData applications to SPARQL endpoints\footnote{OData SPARQL: \url{https://github.com/BrightstarDB/odata-sparql} last visit 2013-05-07}.
+
+% typing
+
+
  
 
 %\subsection{LINQ Query Expressions}
