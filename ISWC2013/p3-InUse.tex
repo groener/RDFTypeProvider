@@ -300,7 +300,7 @@ For instance, we get the individual \texttt{http://dbpedia.org/page/Bruce\_Lee} 
 Accordingly, we can build an instance of movie.
 
 \begin{lstlisting}[style=code, caption={Individual of  ``Actor'' }, label={lst:skyfall}]
-let bl = Acotor(`http://dbpedia.org/page/Bruce_Lee')
+let bl = Actor(`http://dbpedia.org/page/Bruce_Lee')
 \end{lstlisting}
 
 \tr{3} Types are used to instantiate individuals. 
@@ -369,8 +369,8 @@ When deriving RDF data from external data sources, the key problem is how to int
 such types into the host programming schema. \\
 \textbf{Contribution:} Types are built based on the schema information that is obtained
 from the RDF data source. The schema is derived by the 
-usage of certain predicates like \textsf{rdf:type}, \textsf{rdfs:domain} and \textsf{rdfs:range}
-and classes like \textsf{rdf:Class}.
+usage of certain predicates like \texttt{rdf:type}, \texttt{rdfs:domain} and \texttt{rdfs:range}
+and classes like \texttt{rdf:Class}.
 
 \paragraph{\bf Scalable Type Definition on Demand.}
 As data sources on the Web tend to be huge, it is not a promising idea to
@@ -395,7 +395,7 @@ This implicitly also takes changes of the data (individuals) into account. \\
 Hierarchies of classes and also properties in RDF data can be quite extensive.
 Besides this, domain and range restrictions of properties that entities can be classes
 in case this is not explicitly stated. \\
-\textbf{Contribution:} We incorporate RDF entailment regime, which is supported by SPARQL 1.1
+\textbf{Contribution:} We incorporate RDF entailment regime, which is supported by SPARQL~1.1
 in order to derive a fine-grained type system / schema.
 While our type bridge is built to access and integrate RDF data into programs,
 we also use Semantic Web technologies and built the data access upon
@@ -473,28 +473,26 @@ In SPARQL 1.1, which we are referring to in this paper, the graph matching princ
 is extended by entailment relations, as defined by the SPARQL entailment regimes\footnote{SPARQL 1.1 Entailment Regimes:
 \url{http://www.w3.org/TR/sparql11-entailment}}. Among others, the entailment regimes contain RDF and RDFS entailment rules
 Thus, triple matching is extended to triples that can be derived from an RDF graph $G$. Formally, we denote
-this extended set of triples, which can be derived by RDF(S) entailment as Materialized Grapn (cf.~Def.~\ref{def:mat}).
+this extended set of triples, which can be derived by RDF(S) entailment, as Materialized Graph (cf.~Def.~\ref{def:mat}.A).
 (The symbol $\models_{\mathcal{T}}$ denotes RDF(S) entailment.)
 
 We use a distinction between classes (schema) and data in the RDF graph.
 We refer an entitiy $C$ (subject or predicate in a triple) as a class (or RDF class).
-This is described by the second part of Def.~\ref{def:rdf}.
+This is described in Def.~\ref{def:mat}.B.
  
 
 \begin{definition}[Materialized RDF Graph and RDF Classes]
-\label{def:rdf}
-\begin{enumerate}
-	\item 
-Let $\mathrm{G}$ be an RDF graph. A materialzed graph $\hat{G}$ is defined as follows:
+\label{def:mat}
+\begin{itemize}
+	\item[A] Let $\mathrm{G}$ be an RDF graph. A materialzed graph $\hat{G}$ is defined as follows:
 
-$\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B)  | G \models_{\mathcal{T}} (s, \ p, \ o) \}  $. 
+$\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B) \ | \ G \models_{\mathcal{T}} (s, \ p, \ o) \}  $. 
 
-\item
-$C$ is referred to as a class (or RDF class) if one of the following conditions hold:
+\item[B] $C$ is referred to as a class (or RDF class) if one of the following conditions hold:
 (i) there is a type statement  (s rdf:type C) $\in \hat{G}$,
  (ii) there is a domain restriction (s rdfs:domain C) $\in \hat{G}$ or 
 (iii) there is a range restriction (s rdfs:range C) $\in \hat{C}$ and C is not a datatype.
-\end{enumerate}
+\end{itemize}
 \end{definition}
 
 
@@ -716,7 +714,7 @@ the data handler.
 		 \begin{itemize}
 			 \item When a property is selected, the status of the data handler is this
 			   particular selected property. For instance, for Actor we can select the
-				  property ``rdfs:subClassOf''. Using the dot-operator get a list of classes
+				  property ``\texttt{rdfs:subClassOf}''. Using the dot-operator get a list of classes
 					 that are the super-classes of the domain-class. For instance, the class ``Artist''.
 					 When one class of this list is selcted, the status of the data handler is
 					 like in the second case a certain RDF class.
