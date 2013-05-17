@@ -272,7 +272,7 @@ type Artist = {
   rdfs:label : String
 }
 
-// Again the "Acotr" Type as Subclass of "Artist"
+// Again the "Actor" Type as Subclass of "Artist"
 type Actor = {
   inherit Work
   id : URI
@@ -296,11 +296,11 @@ might only a part of the classes.
 \textbf{Step 4: Define individuals of classes.}
 In our application, we want to mange concrete movies, which can be derived from the data sources,
 as individuals of this class. Using a SPARQL query we can retrieve all individuals of class ``Actor''.
-For instance, we get the individual \texttt{http://dbpedia.org/page/Bruce_Lee} for the actor ``Burce Lee''.
+For instance, we get the individual \texttt{http://dbpedia.org/page/Bruce\_Lee} for the actor ``Burce Lee''.
 Accordingly, we can build an instance of movie.
 
 \begin{lstlisting}[style=code, caption={Individual of  ``Actor'' }, label={lst:skyfall}]
-  let bl = Acotor(`http://dbpedia.org/page/Bruce_Lee')
+let bl = Acotor(`http://dbpedia.org/page/Bruce_Lee')
 \end{lstlisting}
 
 \tr{3} Types are used to instantiate individuals. 
@@ -348,8 +348,8 @@ oriented investigations.
 
 We present a type bridge or type adapter in order to create types for RDF classes that
 are retrieved from linked data sources. 
-In essence, the type bridge acts as a type provider in \fsharp that support the integration of information sources
-into \fsharp~\cite{Syme2012fsharp}. Type provider are means for data progamming
+In essence, the type bridge acts as a type provider in \fs that support the integration of information sources
+into \fs~\cite{Syme2012fsharp}. Type provider are means for data progamming
 in statically typed programming languages.
 The general principle of type providers is 
 to retrieve a well structured schema from (Web) data sources in order to build
@@ -658,6 +658,13 @@ According to the integration principle, types are created when a certain entity 
 by navigation along the graph. Thus, we can also have some cycles in the exploitation. In order to achieve skalability in
 statically typed languages, it has to be ensured that a type for entity is only created once.
 To do this, we use dictionaries in the type dictionaries (hash maps) to ensure that types are unique and to avoid infinite loops.
+
+Another technique that we apply is a sampling of properties. According to requirements \tr{4} and \rr{2}, the a typed access on individuals
+suffers from the problem that the type definition (based on the RDF class) to not necessarily reflect all property statements
+of the individuals. To remedy this, we apply a sampling technique when a class type is created.
+A static parameter of the type bridge gives the number of sample individuals. The properties of these individuals
+are added as optional properties of the corresponding types. Further parameters allow to specify
+how often a property must appear in order to be added as property to a type.
 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
