@@ -542,16 +542,20 @@ the bridge is developed.
 \subsection{Features of the Type Bridge}
   
 According to Sect.~\ref{sec:context}, we aim at achieving two groups of requirements:
-navigation requirements (NR) and typing requirements (TR). Navigation is needed since the an RDF graph does not explicitly 
+retrieval requirements (RR) and typing requirements (TR). Navigation is needed since the an RDF graph does not explicitly 
 distinguish between schema and data, as for instance in relational databases. Thus, the navigation is
 used to find those elements in the graph that should be integrated as types and their corresonding data (individuals) in a program.
 Aspects of the integration into the programming type system are reflected by the typing requirments (TR).
 
 In order to meet the requirements, the type bridge has to provide the following functionality.
-First, the exploration of an RDF graph must be supported. Thus, we need to be able to hook into the graph and then
-follow the properties from one entity to the next one. While this is possible for RDF classes and individuals.
-Second, the retrieval of the currently explored entity and its properties must be supported.
-
+First, the exploration of an RDF graph must be supported. Thus, we need some kind of data handler
+to be able to hook into the RDF source. Second, we have to use the data handler to explore the data source by
+following the properties from one entity to the next one. This must be provoded for RDF classes and individuals.
+Properties also include type statements, and therefore,
+we can also follow relations between classes and individuals.
+Third, the retrieval of the currently explored entity and its properties must be supported.
+Fourth, The definition of a static type must be soported. This means that also all properties of
+the type must be defined.
 The type bridge, its features and its context of use is illustrated in Fig.~\ref{fig:context}.
 The design and implementation of the type bridge is described in the next part of this section.
 
@@ -697,7 +701,7 @@ access for the navigation and retrieval of data from the external RDF data sourc
 In particular, using the dot-operator depends from the current status of
 the data handler. 
 
-\begin{itemize}
+\begin{enumerate}
 	\item After the instantiation of the data handler, it refers just
 	       to the RDF data source, e.g., DBpedia. This is represented
 	   by a root type (also called service type) \texttt{http://dbpedia.org}.
@@ -723,8 +727,11 @@ the data handler.
 					 e.g., for ``Bruce Lee'', the developer can see a list of properties,
 					but now these are all properties of this particual individual.
 		 \end{itemize}
-\end{itemize}
+\end{enumerate}
 
+\begin{lstlisting}[style=code, caption={Initialize data handler}, label={lst:useTP1}]
+let dc = RdfTypeProvider<"http://dbpedia.org/sparql">.GetDataContext()
+\end{lstlisting}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Evaluation}
