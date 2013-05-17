@@ -678,21 +678,51 @@ gets the full support from the underlying static type system.
 Second, when the application is used at run-time, these generated types are treated as basic .NET types in \fs.
 
 Consider again the program development from the original example in Sect.~\ref{sec:design}.
+When developing a progam by using the RDF type bridge, the libarary of the bridge (dll-file) must
+be loaded and then a data handler is created, which invokes the connector component to
+establish a connection to a particular RDF source, e.g., to DBpedia. Afterwards, the data handler
+serves as an object in the program to retrieve and organize retrieved data during the development.
 
-\paragraph{Navigation Principle}
+\subsection{Integrated Data Retrieval}
 
-The navigation uses the usual dot-operator, as it is also used in other type bridges in \fs.
-The navigation works as follows:
+The retrieval of RDF data is completely integrated in the IDE of the programming language,
+i.e., Visual Studio\footnote{Visual Studio: \url{http://www.microsoft.com/germany/visualstudio/}}
+or MonoDevelop\footnote{MonoDevelop IDE: \url{http://monodevelop.com/}} (for Linux systems) for\fs in our case.
+Thus, a developer can explore an external RDF data source and retrieve data from this source
+within the development environment and by using the data handler.
+Accessing the data handler is done by using  the usual dot-operator.
+
+Accordingly, ``accessing'' the data handler by the dot-operator is the IDE-integrated
+access for the navigation and retrieval of data from the external RDF data source.
+In particular, using the dot-operator depends from the current status of
+the data handler. 
+
 \begin{itemize}
-	\item The top-level element is the data source, e.g., DBpedia. This is represented
-	   by the type \texttt{http://dbpedia.org}. When pressing the dot we get a list of all
-		 classes.
-	\item 
-\end{itemize}
-
-\begin{itemize}
-	\item design time: intellisense, autocompleting, when designing types
-  \item run time: lazy typing
+	\item After the instantiation of the data handler, it refers just
+	       to the RDF data source, e.g., DBpedia. This is represented
+	   by a root type (also called service type) \texttt{http://dbpedia.org}.
+		  When pressing the dot we get a list of all  classes of the data source is shown.
+	\item After selecting one of the classes, the status of the data handler refers to this class.
+	    For instance, if the developer selects the RDF class ``Actor'' (from the list of classes shown by the data handler),
+			the current status of the data handler is like an ``Actor'' class. In the program,
+			this status is represented by the path \texttt{<http://dbpedia.org/>.<http://dbpedia.org/ontology/Actor>}.
+  \item When the status of the data handler is a particular class,
+		the dot-operator will list all properties of the class and a collection
+		called ``Individuals'' that contains all individuals of this class.
+		 \begin{itemize}
+			 \item When a property is selected, the status of the data handler is this
+			   particular selected property. For instance, for Actor we can select the
+				  property ``rdfs:subClassOf''. Using the dot-operator get a list of classes
+					 that are the super-classes of the domain-class. For instance, the class ``Artist''.
+					 When one class of this list is selcted, the status of the data handler is
+					 like in the second case a certain RDF class.
+				\item When the individuals collection is selected, the develop gets
+					a list of individuals. If one is selected, e.g., ``Bruce Lee'', the
+					status of the data handler is the current individual.
+					When using the dot-operator for an individual state,
+					 e.g., for ``Bruce Lee'', the developer can see a list of properties,
+					but now these are all properties of this particual individual.
+		 \end{itemize}
 \end{itemize}
 
 
