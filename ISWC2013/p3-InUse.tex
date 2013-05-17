@@ -483,12 +483,13 @@ This is described in Def.~\ref{def:mat}.B.
 
 \begin{definition}[Materialized RDF Graph and RDF Classes]
 \label{def:mat}
+Let $\mathrm{G}$ be an RDF graph.
 \begin{itemize}
-	\item[A] Let $\mathrm{G}$ be an RDF graph. A materialzed graph $\hat{G}$ is defined as follows:
+	\item[A.]  A materialzed graph $\hat{G}$ is defined as follows:
 
 $\hat{G}$ $=$ $\{ (s ,\ p , \ o) \in (U\cup B)\times U \times (U\cup L \cup B) \ | \ G \models_{\mathcal{T}} (s, \ p, \ o) \}  $. 
 
-\item[B] $C$ is referred to as a class (or RDF class) if one of the following conditions hold:
+\item[B.] $C$ is referred to as a class (or RDF class) if one of the following conditions hold:
 (i) there is a type statement  (s rdf:type C) $\in \hat{G}$,
  (ii) there is a domain restriction (s rdfs:domain C) $\in \hat{G}$ or 
 (iii) there is a range restriction (s rdfs:range C) $\in \hat{C}$ and C is not a datatype.
@@ -574,16 +575,21 @@ The type bridge consists of two components: (i)~the data source \emph{connector}
 \emph{type generation description}. The latter one is a kind of compile-time meta-programming construct.
 In the following, we consider both components in detail.
 
-The connector establishes a connection to the SPARQL endpoint. It serves as a mediator
+The \emph{connector} establishes a connection to the SPARQL endpoint. It serves as a mediator
 between the type generation descrition and the external data source.
 The connector gets as an argument the URI of the SPARQL enpoint
 in order to establish a connection to the SPARQL endpoint.
 
+All data are obatined from the data source by SPARQL queries.
+Thus, the connector consists of functions that are used by the type generation description
+to navigate in the data source and to retrieve data from the source.
+Internally, these functions encode SPARQL queries in order to implement both tasks the navigation and the retrieval.
 
-The connector consists of functions that are used by the type generation description
-to navigate in the data source and to retrieve data. Internally, these functions
-encode SPARQL queries to implement both tasks the navigation and the retrieval.
-
+Functions of the connector are used to retrieve (i)~all classes of the source,
+(ii)~individuals of a certain class, (iii)~properties of a class (i.e., the objects of
+triples in which the class is the subject and the property the predicate),
+(iv)~properties of an individual and (v)~the classes of an individual.
+The notion of a class in the RDF data referes to the specification of Def.~\ref{def:mat}.
 %
 %
 %After a successful connection to the SPARQL endpoint, we get the following 
@@ -597,36 +603,41 @@ encode SPARQL queries to implement both tasks the navigation and the retrieval.
 
 
 
+The key part of the type bridge is the \emph{type generation description} that
+defines how types with their parameters, properties and methods are built when the bridge is used.
+In essence, the type bridge is model that specifies the type import into a programming language.
+In the following, we discuss the key rules for the type import of an RDF type bridge.
 
-
-The type generation description defines how types with their parameters,
-properties and methods are built.
-
-The first part is the definition of the type itself, which requires at least the
-name of the type and its erasure, i.e., the type this type can be erased to.
+The first part is the definition of the type itself, which represents an RDF class from the data source.
+The rule spcifies how the programming language has to define a type for an RDF class.
+The type definition requires at least the name of the type and its erasure, i.e., the type this type can be erased to.
 
 Let C be the class, which is retrieved by a SPARQL query. The type generation description in \fs
 is as follows:
 
 \begin{lstlisting}[style=code, caption={\textbf{Type Rule:} Type Generation Description for RDF Class C}, label={lst:providedClass}]
-t = ProvidedTypeDefinition(cName, baseType=Some typeof<obj>)
+t = ProvidedTypeDefinition(cname, baseType=Some typeof<obj>)
 \end{lstlisting}
 
-In Listing~\ref{lst:providedClass}, \texttt{cName} denotes the name of class $C$, e.g., the URI of $C$.
-The \texttt{baseType} gives the ``super-type'' from which the generated type $t$ inherits from.
+In Listing~\ref{lst:providedClass}, \texttt{cname} denotes the name of class $C$, e.g., this can be the string of the URI of $C$.
+The \texttt{baseType} gives the erased type, a``super-type'' from which the generated type $t$ inherits.
+For instance, an RDF class can just be erased to an \fs object type. If a type should have other features
+like being iterable, the type can be erased to sequence or list and thus, this type can serve as a collection
+element and iteration features on its elements will part of the type characteristics.
+
 As an example, assume we specify a type generation description for RDF classes.
-It description, which is a compile-time meta-programming constuct, is
-used to build RDF classes, e.g., the ``Movie'' class in our example.
+This description, which is a compile-time meta-programming constuct, is
+used to build RDF classes, e.g., the ``Actor'' class in our example.
 
 
-Types can have properties, accordingly if a type will be created, the corresponding properties
+Types can have properties. Accordingly, if a type will be created, the corresponding properties
 have to be created too. These properties are obtained from the RDF data source and should
-be directly reflected in the source code that will specify the type.
+be directly reflected in the source code that will specify the corresponding type.
 Accordingly, the type generation description describes how to obtain properties and to
 generate the properties of these types.
 
 \begin{lstlisting}[style=code, caption={\texttt{Property Rule:} Add Property for Class C}, label={lst:providedProp}]
- let p = ProvidedProperty(pName, typeof<string>, 
+ let p = ProvidedProperty(pname, typeof<string>, 
     GetterCode = (fun args -> 
 		     <@@(%%(args.[0]):obj) :?> string  @@>))
   // add this property (delayed)
@@ -634,14 +645,16 @@ generate the properties of these types.
  \end{lstlisting}
 
 In Listing~\ref{lst:providedProp}, \texttt{pname} denotes the name of the property (e.g., the URI), \texttt{typeof} gives the
-super-tye (string in this case) and \texttt{GetterCode} is a so-called quotation that specifies the result of a property selection at run time.
+super-type (string in this case) and \texttt{GetterCode} is a so-called quotation that specifies the result of a property selection at run time.
 In this simple case, the string representation of the property itself is the meaning of the property.
+
 In the second line, the peroperty is ``added'' to the type. Note, this this depends on the concrete generated type 
 when the bridge is used in a concrete program. For instance, if a type for RDF class ``Actor'' is created (according to the rule in Listing~\ref{lst:providedClass}),
-the properties (predicates in the RDF graph) of ``Acotr'' are generated and added (according to the property rule in Listing~\ref{lstProvidedProp}).
+the properties (predicates in the RDF graph) of ``Actor'' are generated and added (according to the property rule in Listing~\ref{lstProvidedProp}).
 
-Finally, individuals can be added to classes according to Listing~\ref{lst:providedIndColl}.
-For this, a new type would be created with the name of the class (denoted by \texttt{cName}) and the
+In the next rule, we treat individuals. They can be added to their corresponding classes.
+The according type description specification is shown in Listing~\ref{lst:providedIndColl}.
+For this, a new type would be created with the name of the class (denoted by \texttt{cname}) and the
 suffix ``Individuals''. This type is added to t. In this collection, all individuals are contained.
 
 \begin{lstlisting}[style=code, caption={\texttt{Individual Rule:} Add Individuals (set / collection) to Class C}, label={lst:providedIndColl}]
@@ -651,6 +664,17 @@ let individuals =
 individuals.AddMembersDelayed()
 \\  add indiviual collection to type 
 t.AddMemberDelayed(indiviuals)
+ \end{lstlisting}
+
+Like classes, individuals can have properties too. This means we are looking for properties $p$ where
+the individual $i$ is the subject of a triple: $(i, p, x)$. The specification is shown in Listing~\ref{lst:providedIndProp}.
+
+\begin{lstlisting}[style=code, caption={\texttt{Individual Property Rule:} Add Property for individual ind}, label={lst:providedIndProp}]
+ let p = ProvidedProperty(pname, typeof<string>, 
+    GetterCode = (fun args -> 
+		     <@@(%%(args.[0]):obj) :?> string  @@>))
+  // add this property (delayed)
+ t.AddMemberDelayed(p)
  \end{lstlisting}
 
 
@@ -732,7 +756,7 @@ let dc = RdfTypeProvider<"http://dbpedia.org/sparql">.GetDataContext()
 \end{lstlisting}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Evaluation}
+\section{Evaluation and Implementation}
 \label{sec:eval}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
