@@ -38,6 +38,7 @@
   <ItemGroup>
     <None Include="Script.fsx" />
     <None Include="packages.config" />
+    <Compile Include="Cache.fs" />
     <Compile Include="ProvidedTypes-0.4.fs" />
     <Compile Include="RDFConnection.fs" />
     <Compile Include="RDFDataStructure.fs" />

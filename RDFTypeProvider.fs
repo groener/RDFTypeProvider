@@ -9,7 +9,6 @@ open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.FSharp.Quotations
 open System.Text.RegularExpressions
     
-// type provider implementation
 
 
 [<TypeProvider>]
@@ -33,10 +32,10 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
             rdfTypesExplicit  @ rdfTypesOfDomain |> Seq.distinctBy id
         
 
-        /// Core type dictionary.  Name * ProvidedType.  Eghttp://namespace/Actor (a class) or and specific individuals
+        /// Core type dictionary.  Name * ProvidedType.  E.g.,  http://namespace/Actor (a class) or and specific individuals
         let dictClassTypes = Dictionary<string, ProvidedTypeDefinition>(HashIdentity.Structural)
 
-        /// Holds "Collection" and "Individual" types that sit on the root level of the type system, eg ActorCollection
+        /// Holds "Collection" and "Individual" types that sit on the root level of the type system, e.g., ActorCollection
         // Collection provides access to the Individual type, which in turn holds a property for each unique individual type.
         // In the future the Collection type would be Enumerable and able to query the data store. 
         let dictCollectionTypes = Dictionary<ProvidedTypeDefinition, ProvidedTypeDefinition * ProvidedTypeDefinition>(HashIdentity.Reference)        // collection type * individual type
@@ -48,7 +47,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
         //TODO: THESE TWO CORE RECUSRIVE FUNCTIONS THAT CREATE THE TYPE SYSTEM 
         //THE RESULT REALLY NEEDS TIDYING UP 
 
-        let rec makeMembersForRDFType (rdfTypeInGraph: string) (graphType:ProvidedTypeDefinition) isIndividual ultimateRootType =
+        let rec makePropertiesForRDFType (rdfTypeInGraph: string) (graphType:ProvidedTypeDefinition) isIndividual ultimateRootType =
             (if isIndividual then connector.getPropertiesOfRDFIndividual rdfTypeInGraph 
              else connector.getPropertiesOfRDFClassWithIndividualSamples(rdfTypeInGraph, schemaSampleAmount))
             |> List.filter (fst >> String.IsNullOrEmpty >> not)
@@ -71,7 +70,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                         |> Seq.iter( snd >> Option.iter( fun className -> 
                             // class name will be for example "Actor" OR "Person".  The return type the property will be the provided type for that class,
                             // and the instance that it returns is simply the same data that already have.  
-                            let (altType,_) = findOrCreateClassType className ultimateRootType false false ultimateRootType  
+                            let (altType,_) = findOrCreateType className ultimateRootType false false ultimateRootType  
                             altClassType.AddMember(ProvidedProperty(className,altType,GetterCode = fun args -> <@@ (%%args.[0]:RdfClass) @@>))))
 
                         graphType.AddMember(altClassType) 
@@ -90,7 +89,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                                       propContainerType.AddMemberDelayed(fun _ -> ProvidedProperty("Literal",typeof<string list>,GetterCode = fun args -> <@@ (%%args.[0]:RdfClass).GetLiteralValue(key) @@> ))
                             | Some(classOrResourceName) ->                            
                                 let (providedPropertyType,alreadyExists) =
-                                     findOrCreateClassType classOrResourceName ultimateRootType false true ultimateRootType
+                                     findOrCreateType classOrResourceName ultimateRootType false true ultimateRootType
                                 let listType = typedefof<list<_>>.MakeGenericType([|providedPropertyType :> Type|])
                                 if isIndividual then                                    
                                     propContainerType.AddMemberDelayed(fun _ -> ProvidedProperty(classOrResourceName,providedPropertyType  ,GetterCode = fun args -> <@@ (%%args.[0]:RdfClass).GetComplexValue((key,classOrResourceName)) @@>))
@@ -102,19 +101,19 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                         ProvidedProperty(propName,propContainerType,GetterCode = fun args -> <@@ (%%args.[0]:RdfClass) @@>))
             |> Seq.toList
 
-        and findOrCreateClassType name containerType isRoot isIndividual ultimateRootType  =
+        and findOrCreateType name containerType isRoot isIndividual ultimateRootType  =
             match dictClassTypes.TryGetValue name with 
             | false,_ -> 
                 let t =                     
-                    // individuals that are coming directly from a "Collection" type provided by the root, eg ActorCollection, all erase down to the Actor erased type
+                    // individuals that are coming directly from a "Collection" type provided by the root, e.g., ActorCollection, all erase down to the Actor erased type
                     if isIndividual && containerType <> ultimateRootType then ProvidedTypeDefinition(name, baseType=Some(containerType:>_) ,HideObjectMethods=true)
                     // otherwise,  if this is an indivdual coming from another individual, then we don't know what type it is as it could be one of many, 
                     // in this case we are still returning the individual type but we are unable to erase it down to some other erased type (like actor)
                     // so just erase down to RdfClass,as is the case with all other types that are not individuals.
                     else ProvidedTypeDefinition(name, baseType=Some typeof<RdfClass>,HideObjectMethods=true)
                 t.AddMemberDelayed( fun () -> ProvidedConstructor([],InvokeCode = fun _ -> <@@ RdfClass() @@>   ))
-                t.AddMembersDelayed (fun () -> makeMembersForRDFType name containerType isIndividual ultimateRootType)
-                // the "isRoot" tells us if we are generating types for the "root" ofthe heirarchy, eg dbpedia.  This is the type which we create 
+                t.AddMembersDelayed (fun () -> makePropertiesForRDFType name containerType isIndividual ultimateRootType)
+                // the "isRoot" tells us if we are generating types for the "root" of the hierarchy, e.g., dbpedia.  This is the type which we create 
                 // collection and individuals classes for all available types.
                 match isRoot with
                 | true ->             
@@ -129,7 +128,7 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
                                 [ for ind in connector.getIndividuals(name,numOfIndividuals) |> Seq.distinctBy id  do   
                                     // here we find all the individuals of this type and create a proeprty for each one,
                                     // lazily (recursveily) populating the indiviual's unique type 
-                                    let (individualType,_) = findOrCreateClassType ind t false true ultimateRootType
+                                    let (individualType,_) = findOrCreateType ind t false true ultimateRootType
                                     let p = ProvidedProperty(ind, individualType, 
                                                             GetterCode = (fun args -> 
                                                             <@@
@@ -155,24 +154,24 @@ type RDFTypeProvider(config: TypeProviderConfig) as this =
             | _,t -> 
                 (t,true)
 
-        let insertRDFTypesForOneGraph (theDataTypesClassForGraph : ProvidedTypeDefinition, graphId) = 
+        let insertRDFTypesForOneGraph (graph : ProvidedTypeDefinition, graphId) = 
             let allTypesForGraph = getRdfTypes  // graphId is not needed -- as only one graph
             let theNestedTypesForTheDataTypesClassForDomain = ResizeArray<_>()
             
             for rdfTypeInGraph in allTypesForGraph do
-                let declaringType = theDataTypesClassForGraph
-                let (itemType,_) = findOrCreateClassType rdfTypeInGraph theDataTypesClassForGraph true false theDataTypesClassForGraph
+                let declaringType = graph
+                let (itemType,_) = findOrCreateType rdfTypeInGraph graph true false graph
                 declaringType.AddMember itemType
                 
             theNestedTypesForTheDataTypesClassForDomain |> Seq.toArray
 
         do serviceType.AddMembers(            
-            let makeTypeForGraphTypes(graphName:string) = 
-                let theDataTypesClassForGraph = ProvidedTypeDefinition(graphName, Some typeof<obj>,HideObjectMethods=false)
-                theDataTypesClassForGraph.AddMembers(insertRDFTypesForOneGraph (theDataTypesClassForGraph,graphName) |> Array.toList) 
-                theDataTypesClassForGraph
+            let makeTypeForGraph(graphName:string) = 
+                let graph = ProvidedTypeDefinition(graphName, Some typeof<obj>,HideObjectMethods=false)
+                graph.AddMembers(insertRDFTypesForOneGraph (graph,graphName) |> Array.toList) 
+                graph
             [ for graph in connector.getGraphs() do 
-                yield makeTypeForGraphTypes (graph) ] )
+                yield makeTypeForGraph (graph) ] )
           
         let rootType = ProvidedTypeDefinition(asm, ns, rootTypeName, baseType=Some typeof<Connector>, HideObjectMethods=true)
         rootType.AddMember serviceType
